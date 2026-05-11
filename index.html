@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FrotaApp - Gestão de Frota</title>
+    <title>Tropa dos Freitas Transportes - Gestão de Frota</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -59,7 +59,7 @@
             { id: 'oleo', label: 'Óleo do Motor' },
             { id: 'agua', label: 'Água do Radiador' },
             { id: 'pneus', label: 'Pressão dos Pneus' },
-            { id: 'travoes', label: 'Sistema de Travões' },
+            { id: 'cacamba', label: 'Caçamba' },
             { id: 'luzes', label: 'Luzes e Faróis' },
             { id: 'limpeza', label: 'Limpeza Geral' }
         ];
@@ -109,7 +109,6 @@
                 setTimeout(() => setNotification(null), 3000);
             };
 
-            // FUNÇÃO CORRIGIDA: Toggle do Checklist
             const handleChecklistToggle = (id) => {
                 setFormData(prev => ({
                     ...prev,
@@ -144,7 +143,6 @@
                 setRecords([newRecord, ...records]);
                 notify("Registo guardado com sucesso!");
                 
-                // Resetar formulário (Checklist volta ao estado inicial)
                 setFormData(prev => ({
                     ...prev,
                     hadFueling: false,
@@ -158,14 +156,16 @@
                 <div className="flex justify-center min-h-screen bg-gray-50 pb-24">
                     <div className="w-full max-w-md bg-white min-h-screen shadow-xl relative overflow-x-hidden">
                         
-                        {/* Header */}
+                        {/* Header atualizado com o novo nome */}
                         <header className="sticky top-0 bg-white/90 backdrop-blur-md border-b p-5 flex items-center gap-3 z-40">
                             <div className="bg-blue-600 p-2 rounded-2xl shadow-lg shadow-blue-100">
                                 <Icon name="Car" className="text-white w-5 h-5" />
                             </div>
                             <div>
-                                <h1 className="text-lg font-black leading-none">Frota<span className="text-blue-600">App</span></h1>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Gestão Diária</p>
+                                <h1 className="text-base font-black leading-none text-gray-900">
+                                    Tropa dos <span className="text-blue-600">Freitas</span>
+                                </h1>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Transportes • Gestão Frota</p>
                             </div>
                         </header>
 
@@ -181,23 +181,21 @@
                         <main className="p-6 space-y-6">
                             {activeTab === 'registo' && (
                                 <div className="space-y-6 animate-slide">
-                                    {/* Identificação */}
                                     <section className="bg-gray-50 p-5 rounded-[2.5rem] border border-gray-100 space-y-4">
                                         <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Identificação</h2>
                                         <select 
                                             value={selectedUserId} 
                                             onChange={e => setSelectedUserId(Number(e.target.value))} 
-                                            className="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 ring-blue-500 font-bold transition-all"
+                                            className="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 ring-blue-500 font-bold transition-all text-sm"
                                         >
                                             {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.plate})</option>)}
                                         </select>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl outline-none text-sm font-medium" />
+                                            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl outline-none text-xs font-medium" />
                                             <input type="number" placeholder="KM Atual" value={formData.odometer} onChange={e => setFormData({...formData, odometer: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl outline-none font-black text-blue-600" />
                                         </div>
                                     </section>
 
-                                    {/* Checklist - ONDE ESTAVA O ERRO */}
                                     <section className="bg-gray-50 p-5 rounded-[2.5rem] border border-gray-100">
                                         <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-4">Checklist de Segurança</h2>
                                         <div className="grid grid-cols-1 gap-2">
@@ -218,7 +216,6 @@
                                         </div>
                                     </section>
 
-                                    {/* Abastecimento */}
                                     <section className="bg-gray-50 p-5 rounded-[2.5rem] border border-gray-100">
                                         <div className="flex justify-between items-center mb-4">
                                             <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Abastecimento</h2>
@@ -256,7 +253,7 @@
                                         <button onClick={() => { if(confirm('Apagar tudo?')) setRecords([]) }} className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Limpar</button>
                                     </div>
                                     {records.length === 0 ? (
-                                        <div className="py-20 text-center opacity-20"><Icon name="History" className="w-20 h-20 mx-auto" /><p className="font-black mt-4">Vazio</p></div>
+                                        <div className="py-20 text-center opacity-20"><Icon name="History" className="w-20 h-20 mx-auto" /><p className="font-black mt-4 text-xs uppercase tracking-widest">Vazio</p></div>
                                     ) : (
                                         records.map(r => {
                                             const u = users.find(u => u.id === r.userId);
@@ -265,16 +262,16 @@
                                                 <div key={r.id} className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-4">
                                                     <div className="flex justify-between items-start">
                                                         <div>
-                                                            <p className="font-black text-gray-800">{u?.name}</p>
-                                                            <p className="text-[10px] font-bold text-gray-400 uppercase">{u?.plate} • {r.date}</p>
+                                                            <p className="font-black text-gray-800 text-sm">{u?.name}</p>
+                                                            <p className="text-[9px] font-bold text-gray-400 uppercase">{u?.plate} • {r.date}</p>
                                                         </div>
-                                                        <div className="text-right bg-blue-50 px-3 py-1 rounded-full">
-                                                            <p className="text-xs font-black text-blue-600">{r.odometer} km</p>
+                                                        <div className="text-right bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                                            <p className="text-[10px] font-black text-blue-600">{r.odometer} km</p>
                                                         </div>
                                                     </div>
                                                     
                                                     {r.hadFueling && (
-                                                        <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-2xl">
+                                                        <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-2xl border border-gray-100">
                                                             <div><p className="text-[8px] text-gray-400 uppercase font-black tracking-tighter">Consumo</p><p className="text-xs font-black">{r.kml} km/L</p></div>
                                                             <div><p className="text-[8px] text-gray-400 uppercase font-black tracking-tighter">Custo/km</p><p className="text-xs font-black">{r.costPerKm}€</p></div>
                                                         </div>
@@ -284,7 +281,7 @@
                                                         {fails.length === 0 ? (
                                                             <span className="text-[9px] font-black uppercase bg-green-50 text-green-600 px-2 py-1 rounded-md">Viatura OK</span>
                                                         ) : (
-                                                            fails.map(f => <span key={f.id} className="text-[9px] font-black uppercase bg-red-50 text-red-500 px-2 py-1 rounded-md">{f.label} ✖</span>)
+                                                            fails.map(f => <span key={f.id} className="text-[9px] font-black uppercase bg-red-50 text-red-500 px-2 py-1 rounded-md border border-red-100">{f.label} ✖</span>)
                                                         )}
                                                     </div>
                                                 </div>
