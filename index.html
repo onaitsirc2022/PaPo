@@ -1,483 +1,285 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Car, 
-  Fuel, 
-  ClipboardCheck, 
-  History, 
-  Users, 
-  Save, 
-  AlertCircle,
-  CheckCircle2,
-  TrendingUp,
-  Calendar,
-  XCircle
-} from 'lucide-react';
-
-// Itens fixos do checklist
-const checklistItems = [
-  { id: 'oleo', label: 'Óleo do Motor' },
-  { id: 'agua', label: 'Água do Radiador' },
-  { id: 'pneus', label: 'Calibragem dos Pneus' },
-  { id: 'freios', label: 'Sistema de Freios' },
-  { id: 'luzes', label: 'Faróis e Lanternas' },
-  { id: 'limpeza', label: 'Limpeza Geral' }
-];
-
-// Dados iniciais caso não haja nada no localStorage
-const initialUsers = [
-  { id: 1, name: "João Silva", plate: "ABC-1234" },
-  { id: 2, name: "Maria Oliveira", plate: "XYZ-9876" },
-  { id: 3, name: "Carlos Souza", plate: "DEF-5678" },
-  { id: 4, name: "Ana Costa", plate: "GHI-9012" }
-];
-
-export default function App() {
-  const [activeTab, setActiveTab] = useState('registro');
-  
-  // Estado para usuários e registros com carregamento do LocalStorage
-  const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem('frota_users');
-    return saved ? JSON.parse(saved) : initialUsers;
-  });
-  
-  const [records, setRecords] = useState(() => {
-    const saved = localStorage.getItem('frota_records');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [selectedUserId, setSelectedUserId] = useState(users[0].id);
-  const [notification, setNotification] = useState(null);
-
-  // Estado do formulário
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    odometer: '',
-    hadFueling: false,
-    prevOdometer: '',
-    liters: '',
-    totalCost: '',
-    checklist: checklistItems.reduce((acc, item) => ({ ...acc, [item.id]: true }), {})
-  });
-
-  // Persistência automática no LocalStorage
-  useEffect(() => {
-    localStorage.setItem('frota_users', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('frota_records', JSON.stringify(records));
-  }, [records]);
-
-  // Busca automática do último odômetro ao trocar de usuário ou atualizar registros
-  useEffect(() => {
-    const userRecords = records
-      .filter(r => r.userId === selectedUserId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FrotaApp - Gestão de Abastecimento</title>
     
-    if (userRecords.length > 0) {
-      setFormData(prev => ({ ...prev, prevOdometer: userRecords[0].odometer }));
-    } else {
-      setFormData(prev => ({ ...prev, prevOdometer: '' }));
-    }
-  }, [selectedUserId, records]);
-
-  const showNotification = (msg, type = 'success') => {
-    setNotification({ msg, type });
-    setTimeout(() => setNotification(null), 3000);
-  };
-
-  const handleUserChange = (id, field, value) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, [field]: value } : u));
-  };
-
-  const handleChecklistChange = (id) => {
-    setFormData(prev => ({
-      ...prev,
-      checklist: { ...prev.checklist, [id]: !prev.checklist[id] }
-    }));
-  };
-
-  const submitRecord = (e) => {
-    e.preventDefault();
+    <!-- Tailwind CSS para Estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    if (!formData.odometer) {
-      showNotification("Informe o odômetro atual.", 'error');
-      return;
-    }
-
-    let kml = null;
-    let costPerKm = null;
-    let distance = null;
-
-    if (formData.hadFueling) {
-      if (!formData.prevOdometer || !formData.liters || !formData.totalCost) {
-        showNotification("Preencha todos os dados de abastecimento.", 'error');
-        return;
-      }
-      
-      distance = parseFloat(formData.odometer) - parseFloat(formData.prevOdometer);
-      if (distance <= 0) {
-        showNotification("O odômetro atual deve ser maior que o anterior.", 'error');
-        return;
-      }
-
-      kml = (distance / parseFloat(formData.liters)).toFixed(2);
-      costPerKm = (parseFloat(formData.totalCost) / distance).toFixed(2);
-    }
-
-    const newRecord = {
-      id: Date.now(),
-      userId: selectedUserId,
-      ...formData,
-      distance,
-      kml,
-      costPerKm
-    };
-
-    setRecords([newRecord, ...records]);
-    showNotification("Registro salvo com sucesso!");
+    <!-- React e Babel (para executar JSX no browser) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    // Resetar campos de abastecimento e checklist
-    setFormData(prev => ({
-      ...prev,
-      hadFueling: false,
-      liters: '',
-      totalCost: '',
-      checklist: checklistItems.reduce((acc, item) => ({ ...acc, [item.id]: true }), {})
-    }));
-  };
-
-  // --- RENDERIZADORES DE ABAS ---
-
-  const renderRegistro = () => (
-    <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      {/* Identificação */}
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <Car className="w-5 h-5 text-blue-600" />
-          Veículo e Condutor
-        </h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Selecionar Perfil</label>
-            <select 
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(Number(e.target.value))}
-              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-            >
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.name} ({u.plate})</option>
-              ))}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Data</label>
-              <input 
-                type="date" 
-                value={formData.date}
-                onChange={(e) => setFormData({...formData, date: e.target.value})}
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Odômetro (KM)</label>
-              <input 
-                type="number" 
-                placeholder="Ex: 45000"
-                value={formData.odometer}
-                onChange={(e) => setFormData({...formData, odometer: e.target.value})}
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Checklist */}
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <ClipboardCheck className="w-5 h-5 text-blue-600" />
-          Checklist Diário
-        </h2>
-        <div className="grid grid-cols-1 gap-2">
-          {checklistItems.map(item => (
-            <label key={item.id} className="flex items-center justify-between p-3 border border-gray-50 rounded-xl bg-gray-50/50 cursor-pointer hover:bg-gray-100 transition-colors">
-              <span className="text-sm font-medium text-gray-700">{item.label}</span>
-              <input 
-                type="checkbox" 
-                checked={formData.checklist[item.id]}
-                onChange={() => handleChecklistChange(item.id)}
-                className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-              />
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Abastecimento */}
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <Fuel className="w-5 h-5 text-blue-600" />
-            Abastecimento
-          </h2>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="sr-only peer"
-              checked={formData.hadFueling}
-              onChange={(e) => setFormData({...formData, hadFueling: e.target.checked})}
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
-
-        {formData.hadFueling && (
-          <div className="space-y-4 pt-4 border-t border-gray-100 animate-in slide-in-from-top-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Odo. Anterior</label>
-                <input 
-                  type="number" 
-                  value={formData.prevOdometer}
-                  onChange={(e) => setFormData({...formData, prevOdometer: e.target.value})}
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Litros (L)</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  value={formData.liters}
-                  onChange={(e) => setFormData({...formData, liters: e.target.value})}
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Valor Total (R$)</label>
-              <div className="relative">
-                <span className="absolute left-4 top-3.5 text-gray-400">R$</span>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  value={formData.totalCost}
-                  onChange={(e) => setFormData({...formData, totalCost: e.target.value})}
-                  className="w-full p-3 pl-12 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="0,00"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <button 
-        onClick={submitRecord}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
-      >
-        <Save className="w-5 h-5" />
-        Finalizar Registro
-      </button>
-    </div>
-  );
-
-  const renderHistorico = () => (
-    <div className="space-y-4 pb-24 animate-in fade-in duration-300">
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <History className="w-6 h-6 text-blue-600" />
-          Registros
-        </h2>
-        <button 
-          onClick={() => { if(confirm('Limpar histórico?')) setRecords([]) }}
-          className="text-xs text-gray-400 hover:text-red-500 font-medium"
-        >
-          Limpar Tudo
-        </button>
-      </div>
-
-      {records.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-gray-100">
-          <AlertCircle className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-          <p className="text-gray-400 font-medium">Nenhum registro hoje.</p>
-        </div>
-      ) : (
-        records.map(record => {
-          const user = users.find(u => u.id === record.userId);
-          const fails = checklistItems.filter(item => !record.checklist[item.id]);
-
-          return (
-            <div key={record.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-gray-800">{user?.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded font-mono uppercase">
-                      {user?.plate}
-                    </span>
-                    <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {new Date(record.date).toLocaleDateString('pt-BR')}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-semibold text-blue-600 uppercase">Odo: {record.odometer} km</p>
-                </div>
-              </div>
-
-              {record.hadFueling && (
-                <div className="bg-blue-50/50 rounded-xl p-3 grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-[10px] text-gray-400 uppercase block">Consumo</span>
-                    <span className="text-sm font-bold text-blue-700 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3" /> {record.kml} km/L
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-400 uppercase block">Custo/km</span>
-                    <span className="text-sm font-bold text-gray-700">R$ {record.costPerKm}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-2 border-t border-gray-50">
-                <span className="text-[10px] text-gray-400 uppercase block mb-2 font-semibold">Status do Veículo</span>
-                <div className="flex flex-wrap gap-1">
-                  {fails.length === 0 ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] bg-green-50 text-green-600 px-2 py-1 rounded-md">
-                      <CheckCircle2 className="w-3 h-3" /> Tudo em ordem
-                    </span>
-                  ) : (
-                    fails.map(f => (
-                      <span key={f.id} className="inline-flex items-center gap-1 text-[10px] bg-red-50 text-red-500 px-2 py-1 rounded-md border border-red-100">
-                        <XCircle className="w-3 h-3" /> {f.label}
-                      </span>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-
-  const renderUsuarios = () => (
-    <div className="space-y-6 pb-24 animate-in fade-in duration-300">
-      <div className="bg-blue-600 text-white p-6 rounded-3xl shadow-lg shadow-blue-100">
-        <h2 className="text-xl font-bold flex items-center gap-3">
-          <Users className="w-6 h-6" />
-          Configuração de Frota
-        </h2>
-        <p className="text-blue-100 text-xs mt-2 opacity-80 leading-relaxed">
-          Gerencie os 4 condutores e veículos ativos no sistema para registros precisos.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        {users.map((u, index) => (
-          <div key={u.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold text-xs">
-                {index + 1}
-              </span>
-              <h3 className="font-bold text-gray-700">Perfil {index + 1}</h3>
-            </div>
-            <div className="grid grid-cols-1 gap-3">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Nome Completo</label>
-                <input 
-                  type="text" 
-                  value={u.name}
-                  onChange={(e) => handleUserChange(u.id, 'name', e.target.value)}
-                  className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Placa do Veículo</label>
-                <input 
-                  type="text" 
-                  value={u.plate}
-                  onChange={(e) => handleUserChange(u.id, 'plate', e.target.value.toUpperCase())}
-                  className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-mono uppercase"
-                  maxLength={8}
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex justify-center">
-      <div className="w-full max-w-md bg-gray-50 min-h-screen relative shadow-2xl flex flex-col">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* Estilos personalizados para scroll e animações */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide { animation: slideIn 0.3s ease-out forwards; }
         
-        {/* Header */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-4 sticky top-0 z-50">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2.5 rounded-2xl shadow-md shadow-blue-100">
-              <Car className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-black text-gray-900 leading-none">Frota<span className="text-blue-600">App</span></h1>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Management v2.0</span>
-            </div>
-          </div>
-        </header>
+        body { -webkit-tap-highlight-color: transparent; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
 
-        {/* Toast Notification */}
-        {notification && (
-          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-[320px] animate-in slide-in-from-top-4">
-            <div className={`p-4 rounded-2xl shadow-xl flex items-center gap-3 border ${
-              notification.type === 'error' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-gray-900 border-gray-800 text-white'
-            }`}>
-              {notification.type === 'error' ? <XCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5 text-green-400" />}
-              <span className="text-sm font-semibold">{notification.msg}</span>
-            </div>
-          </div>
-        )}
+    <div id="root"></div>
 
-        {/* Content Area */}
-        <main className="flex-1 p-6">
-          {activeTab === 'registro' && renderRegistro()}
-          {activeTab === 'historico' && renderHistorico()}
-          {activeTab === 'usuarios' && renderUsuarios()}
-        </main>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
 
-        {/* Bottom Tab Bar */}
-        <nav className="fixed bottom-0 w-full max-w-md bg-white/90 backdrop-blur-lg border-t border-gray-100 pb-safe z-50">
-          <div className="flex justify-around items-center h-20 px-4">
-            {[
-              { id: 'registro', icon: ClipboardCheck, label: 'Registrar' },
-              { id: 'historico', icon: History, label: 'Histórico' },
-              { id: 'usuarios', icon: Users, label: 'Equipe' }
-            ].map(tab => (
-              <button 
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center justify-center w-full h-full gap-1.5 transition-all relative ${
-                  activeTab === tab.id ? 'text-blue-600' : 'text-gray-400'
-                }`}
-              >
-                {activeTab === tab.id && (
-                  <span className="absolute -top-[1px] w-8 h-[3px] bg-blue-600 rounded-full" />
-                )}
-                <tab.icon className={`w-6 h-6 ${activeTab === tab.id ? 'fill-blue-50' : ''}`} />
-                <span className={`text-[10px] font-bold ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`}>
-                  {tab.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </nav>
-      </div>
-    </div>
-  );
-}
+        // Ícones Lucide como componentes funcionais simples
+        const Icon = ({ name, className = "w-6 h-6", ...props }) => {
+            const [iconContent, setIconContent] = useState("");
+
+            useEffect(() => {
+                if (window.lucide) {
+                    const icon = window.lucide.icons[name];
+                    if (icon) {
+                        // Renderização simplificada de ícones para o ambiente standalone
+                    }
+                }
+            }, [name]);
+
+            // Como o Lucide React via CDN é complexo, usamos SVGs inline para os principais ícones
+            const icons = {
+                Car: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>,
+                Fuel: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="3" y1="22" x2="15" y2="22"/><path d="M4 9h11"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 22h1a3 3 0 0 0 3-3V6a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v13a3 3 0 0 1-3 3h-3"/><path d="M11 7h-4"/><circle cx="9.5" cy="12.5" r="1.5"/></svg>,
+                Clipboard: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>,
+                History: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>,
+                Users: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+                Save: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+                Download: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+                Check: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>,
+                XCircle: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
+                TrendingUp: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            };
+            return icons[name] || null;
+        };
+
+        const checklistItems = [
+            { id: 'oleo', label: 'Óleo do Motor' },
+            { id: 'agua', label: 'Água do Radiador' },
+            { id: 'pneus', label: 'Pressão dos Pneus' },
+            { id: 'freios', label: 'Sistema de Travões' },
+            { id: 'luzes', label: 'Luzes e Faróis' },
+            { id: 'limpeza', label: 'Limpeza Geral' }
+        ];
+
+        const initialUsers = [
+            { id: 1, name: "João Silva", plate: "ABC-1234" },
+            { id: 2, name: "Maria Oliveira", plate: "XYZ-9876" },
+            { id: 3, name: "Carlos Souza", plate: "DEF-5678" },
+            { id: 4, name: "Ana Costa", plate: "GHI-9012" }
+        ];
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('registro');
+            const [users, setUsers] = useState(() => JSON.parse(localStorage.getItem('frota_users')) || initialUsers);
+            const [records, setRecords] = useState(() => JSON.parse(localStorage.getItem('frota_records')) || []);
+            const [selectedUserId, setSelectedUserId] = useState(users[0].id);
+            const [notification, setNotification] = useState(null);
+
+            const [formData, setFormData] = useState({
+                date: new Date().toISOString().split('T')[0],
+                odometer: '',
+                hadFueling: false,
+                prevOdometer: '',
+                liters: '',
+                totalCost: '',
+                checklist: checklistItems.reduce((acc, item) => ({ ...acc, [item.id]: true }), {})
+            });
+
+            useEffect(() => { localStorage.setItem('frota_users', JSON.stringify(users)); }, [users]);
+            useEffect(() => { localStorage.setItem('frota_records', JSON.stringify(records)); }, [records]);
+
+            useEffect(() => {
+                const userRecords = records
+                    .filter(r => r.userId === selectedUserId)
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                setFormData(prev => ({ ...prev, prevOdometer: userRecords.length > 0 ? userRecords[0].odometer : '' }));
+            }, [selectedUserId, records]);
+
+            const notify = (msg, type = 'success') => {
+                setNotification({ msg, type });
+                setTimeout(() => setNotification(null), 3000);
+            };
+
+            const exportCSV = () => {
+                if (records.length === 0) return notify("Sem dados.", "error");
+                const headers = ["Data", "Condutor", "Placa", "Km Atual", "Consumo (km/L)", "Custo/km"];
+                const content = records.map(r => {
+                    const u = users.find(u => u.id === r.userId);
+                    return [r.date, u.name, u.plate, r.odometer, r.kml || "N/A", r.costPerKm || "N/A"].join(",");
+                });
+                const blob = new Blob([[headers.join(","), ...content].join("\n")], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "frota_report.csv";
+                a.click();
+            };
+
+            const save = () => {
+                if (!formData.odometer) return notify("Indique o odómetro.", "error");
+                let distance = null, kml = null, costPerKm = null;
+
+                if (formData.hadFueling) {
+                    distance = parseFloat(formData.odometer) - parseFloat(formData.prevOdometer);
+                    if (distance <= 0) return notify("Odo. atual deve ser maior.", "error");
+                    kml = (distance / parseFloat(formData.liters)).toFixed(2);
+                    costPerKm = (parseFloat(formData.totalCost) / distance).toFixed(2);
+                }
+
+                setRecords([{ id: Date.now(), userId: selectedUserId, distance, kml, costPerKm, ...formData }, ...records]);
+                notify("Gravado!");
+                setFormData(prev => ({ ...prev, hadFueling: false, liters: '', totalCost: '' }));
+            };
+
+            return (
+                <div className="flex justify-center min-h-screen bg-gray-50">
+                    <div className="w-full max-w-md bg-white min-h-screen shadow-xl relative pb-20 overflow-x-hidden">
+                        
+                        {/* Header */}
+                        <header className="sticky top-0 bg-white/90 backdrop-blur border-b p-5 flex items-center gap-3 z-30">
+                            <div className="bg-blue-600 p-2 rounded-xl"><Icon name="Car" className="text-white w-5 h-5" /></div>
+                            <h1 className="text-xl font-black">Frota<span className="text-blue-600">App</span></h1>
+                        </header>
+
+                        {/* Notification */}
+                        {notification && (
+                            <div className={`fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-2xl shadow-xl z-50 text-sm font-bold animate-slide ${notification.type === 'error' ? 'bg-red-500 text-white' : 'bg-gray-900 text-white'}`}>
+                                {notification.msg}
+                            </div>
+                        )}
+
+                        <main className="p-6 space-y-6">
+                            {activeTab === 'registro' && (
+                                <div className="space-y-6 animate-slide">
+                                    <section className="bg-gray-50 p-5 rounded-3xl border border-gray-100">
+                                        <h2 className="text-sm font-bold text-gray-400 uppercase mb-4">Informação Geral</h2>
+                                        <div className="space-y-4">
+                                            <select value={selectedUserId} onChange={e => setSelectedUserId(Number(e.target.value))} className="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 ring-blue-500 font-bold">
+                                                {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.plate})</option>)}
+                                            </select>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl outline-none" />
+                                                <input type="number" placeholder="KM Atual" value={formData.odometer} onChange={e => setFormData({...formData, odometer: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl outline-none font-bold" />
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <section className="bg-gray-50 p-5 rounded-3xl border border-gray-100">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h2 className="text-sm font-bold text-gray-400 uppercase">Abastecimento</h2>
+                                            <button onClick={() => setFormData({...formData, hadFueling: !formData.hadFueling})} className={`w-12 h-6 rounded-full transition-all relative ${formData.hadFueling ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.hadFueling ? 'left-7' : 'left-1'}`} />
+                                            </button>
+                                        </div>
+                                        {formData.hadFueling && (
+                                            <div className="space-y-3 animate-slide">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <input type="number" placeholder="Odo. Anterior" value={formData.prevOdometer} readOnly className="p-4 bg-gray-100 border border-transparent rounded-2xl text-gray-500" />
+                                                    <input type="number" placeholder="Litros (L)" value={formData.liters} onChange={e => setFormData({...formData, liters: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl" />
+                                                </div>
+                                                <input type="number" placeholder="Valor Total (€)" value={formData.totalCost} onChange={e => setFormData({...formData, totalCost: e.target.value})} className="w-full p-4 bg-white border border-gray-200 rounded-2xl" />
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    <section className="bg-gray-50 p-5 rounded-3xl border border-gray-100">
+                                        <h2 className="text-sm font-bold text-gray-400 uppercase mb-4">Checklist Diário</h2>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {checklistItems.map(item => (
+                                                <div key={item.id} onClick={() => handleChecklistChange(item.id)} className="flex items-center justify-between p-4 bg-white rounded-2xl cursor-pointer active:scale-95 transition-all">
+                                                    <span className="text-sm font-bold text-gray-700">{item.label}</span>
+                                                    {formData.checklist[item.id] ? <Icon name="Check" className="text-green-500 w-5 h-5" /> : <Icon name="XCircle" className="text-red-400 w-5 h-5" />}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+
+                                    <button onClick={save} className="w-full py-5 bg-blue-600 text-white rounded-3xl font-black shadow-xl shadow-blue-100 flex items-center justify-center gap-2 active:scale-95 transition-all">
+                                        <Icon name="Save" className="w-5 h-5" /> Gravar Registro
+                                    </button>
+                                </div>
+                            )}
+
+                            {activeTab === 'historico' && (
+                                <div className="space-y-4 animate-slide">
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-lg font-black">Histórico</h2>
+                                        <button onClick={exportCSV} className="text-xs bg-blue-50 text-blue-600 px-4 py-2 rounded-xl font-bold flex items-center gap-1">
+                                            <Icon name="Download" className="w-3 h-3" /> Exportar CSV
+                                        </button>
+                                    </div>
+                                    {records.length === 0 ? (
+                                        <div className="p-10 text-center text-gray-300 font-bold uppercase tracking-widest">Sem Registros</div>
+                                    ) : (
+                                        records.map(r => {
+                                            const u = users.find(u => u.id === r.userId);
+                                            return (
+                                                <div key={r.id} className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-3">
+                                                    <div className="flex justify-between">
+                                                        <div><p className="font-black text-gray-800">{u?.name}</p><p className="text-[10px] text-gray-400 font-mono">{u?.plate}</p></div>
+                                                        <div className="text-right"><p className="text-[10px] text-gray-400">{r.date}</p><p className="font-bold text-blue-600 text-sm">{r.odometer} km</p></div>
+                                                    </div>
+                                                    {r.hadFueling && (
+                                                        <div className="grid grid-cols-2 gap-2 bg-blue-50 p-3 rounded-2xl">
+                                                            <div><p className="text-[8px] text-blue-400 uppercase font-bold">Km/L</p><p className="text-sm font-black text-blue-700">{r.kml}</p></div>
+                                                            <div><p className="text-[8px] text-blue-400 uppercase font-bold">Custo/km</p><p className="text-sm font-black text-blue-700">{r.costPerKm}€</p></div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
+                                        })
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'usuarios' && (
+                                <div className="space-y-4 animate-slide">
+                                    <h2 className="text-lg font-black">Configuração</h2>
+                                    {users.map((u, idx) => (
+                                        <div key={u.id} className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-3">
+                                            <p className="text-[10px] font-bold text-blue-600 uppercase">Condutor {idx + 1}</p>
+                                            <input type="text" value={u.name} onChange={e => setUsers(prev => prev.map(usr => usr.id === u.id ? {...usr, name: e.target.value} : usr))} className="w-full p-3 bg-gray-50 rounded-xl outline-none font-bold" />
+                                            <input type="text" value={u.plate} onChange={e => setUsers(prev => prev.map(usr => usr.id === u.id ? {...usr, plate: e.target.value.toUpperCase()} : usr))} className="w-full p-3 bg-gray-50 rounded-xl outline-none font-mono text-xs" />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </main>
+
+                        {/* Navigation */}
+                        <nav className="fixed bottom-0 w-full max-w-md bg-white/80 backdrop-blur border-t h-20 flex justify-around items-center px-4 pb-safe z-50">
+                            <button onClick={() => setActiveTab('registro')} className={`flex flex-col items-center gap-1 ${activeTab === 'registro' ? 'text-blue-600' : 'text-gray-300'}`}>
+                                <Icon name="Clipboard" className="w-6 h-6" />
+                                <span className="text-[10px] font-bold">Registro</span>
+                            </button>
+                            <button onClick={() => setActiveTab('historico')} className={`flex flex-col items-center gap-1 ${activeTab === 'historico' ? 'text-blue-600' : 'text-gray-300'}`}>
+                                <Icon name="History" className="w-6 h-6" />
+                                <span className="text-[10px] font-bold">Histórico</span>
+                            </button>
+                            <button onClick={() => setActiveTab('usuarios')} className={`flex flex-col items-center gap-1 ${activeTab === 'usuarios' ? 'text-blue-600' : 'text-gray-300'}`}>
+                                <Icon name="Users" className="w-6 h-6" />
+                                <span className="text-[10px] font-bold">Equipa</span>
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
