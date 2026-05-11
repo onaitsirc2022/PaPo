@@ -3,29 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FrotaApp - Gestão de Abastecimento</title>
+    <title>FrotaApp - Gestão de Frota</title>
     
-    <!-- Tailwind CSS para Estilização -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React e Babel (para executar JSX no browser) -->
+    <!-- React e Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
     <style>
-        /* Estilos personalizados para scroll e animações */
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-slide { animation: slideIn 0.3s ease-out forwards; }
         
-        body { -webkit-tap-highlight-color: transparent; }
+        body { 
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        
+        /* Estilo para simular o clique físico */
+        .active-press:active {
+            transform: scale(0.96);
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans">
@@ -33,33 +37,20 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect } = React;
 
-        // Ícones Lucide como componentes funcionais simples
-        const Icon = ({ name, className = "w-6 h-6", ...props }) => {
-            const [iconContent, setIconContent] = useState("");
-
-            useEffect(() => {
-                if (window.lucide) {
-                    const icon = window.lucide.icons[name];
-                    if (icon) {
-                        // Renderização simplificada de ícones para o ambiente standalone
-                    }
-                }
-            }, [name]);
-
-            // Como o Lucide React via CDN é complexo, usamos SVGs inline para os principais ícones
+        // Componente de Ícones Robusto com SVGs Inline
+        const Icon = ({ name, className = "w-6 h-6" }) => {
             const icons = {
-                Car: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>,
-                Fuel: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="3" y1="22" x2="15" y2="22"/><path d="M4 9h11"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 22h1a3 3 0 0 0 3-3V6a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v13a3 3 0 0 1-3 3h-3"/><path d="M11 7h-4"/><circle cx="9.5" cy="12.5" r="1.5"/></svg>,
-                Clipboard: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>,
-                History: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>,
-                Users: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-                Save: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
-                Download: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
-                Check: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>,
-                XCircle: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
-                TrendingUp: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                Car: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>,
+                Fuel: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="3" y1="22" x2="15" y2="22"/><path d="M4 9h11"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 22h1a3 3 0 0 0 3-3V6a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v13a3 3 0 0 1-3 3h-3"/><path d="M11 7h-4"/><circle cx="9.5" cy="12.5" r="1.5"/></svg>,
+                Clipboard: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>,
+                History: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>,
+                Users: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+                Save: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+                Check: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>,
+                X: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+                Download: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             };
             return icons[name] || null;
         };
@@ -68,7 +59,7 @@
             { id: 'oleo', label: 'Óleo do Motor' },
             { id: 'agua', label: 'Água do Radiador' },
             { id: 'pneus', label: 'Pressão dos Pneus' },
-            { id: 'freios', label: 'Sistema de Travões' },
+            { id: 'travoes', label: 'Sistema de Travões' },
             { id: 'luzes', label: 'Luzes e Faróis' },
             { id: 'limpeza', label: 'Limpeza Geral' }
         ];
@@ -81,7 +72,7 @@
         ];
 
         function App() {
-            const [activeTab, setActiveTab] = useState('registro');
+            const [activeTab, setActiveTab] = useState('registo');
             const [users, setUsers] = useState(() => JSON.parse(localStorage.getItem('frota_users')) || initialUsers);
             const [records, setRecords] = useState(() => JSON.parse(localStorage.getItem('frota_records')) || []);
             const [selectedUserId, setSelectedUserId] = useState(users[0].id);
@@ -97,14 +88,20 @@
                 checklist: checklistItems.reduce((acc, item) => ({ ...acc, [item.id]: true }), {})
             });
 
+            // Sincronização LocalStorage
             useEffect(() => { localStorage.setItem('frota_users', JSON.stringify(users)); }, [users]);
             useEffect(() => { localStorage.setItem('frota_records', JSON.stringify(records)); }, [records]);
 
+            // Atualização de Odómetro Anterior
             useEffect(() => {
-                const userRecords = records
+                const lastRecord = records
                     .filter(r => r.userId === selectedUserId)
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                setFormData(prev => ({ ...prev, prevOdometer: userRecords.length > 0 ? userRecords[0].odometer : '' }));
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                
+                setFormData(prev => ({ 
+                    ...prev, 
+                    prevOdometer: lastRecord ? lastRecord.odometer : '' 
+                }));
             }, [selectedUserId, records]);
 
             const notify = (msg, type = 'success') => {
@@ -112,131 +109,184 @@
                 setTimeout(() => setNotification(null), 3000);
             };
 
-            const exportCSV = () => {
-                if (records.length === 0) return notify("Sem dados.", "error");
-                const headers = ["Data", "Condutor", "Placa", "Km Atual", "Consumo (km/L)", "Custo/km"];
-                const content = records.map(r => {
-                    const u = users.find(u => u.id === r.userId);
-                    return [r.date, u.name, u.plate, r.odometer, r.kml || "N/A", r.costPerKm || "N/A"].join(",");
-                });
-                const blob = new Blob([[headers.join(","), ...content].join("\n")], { type: 'text/csv' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "frota_report.csv";
-                a.click();
+            // FUNÇÃO CORRIGIDA: Toggle do Checklist
+            const handleChecklistToggle = (id) => {
+                setFormData(prev => ({
+                    ...prev,
+                    checklist: {
+                        ...prev.checklist,
+                        [id]: !prev.checklist[id]
+                    }
+                }));
             };
 
-            const save = () => {
-                if (!formData.odometer) return notify("Indique o odómetro.", "error");
-                let distance = null, kml = null, costPerKm = null;
-
+            const handleSave = () => {
+                if (!formData.odometer) return notify("Indique o odómetro atual.", "error");
+                
+                let stats = { distance: null, kml: null, costPerKm: null };
                 if (formData.hadFueling) {
-                    distance = parseFloat(formData.odometer) - parseFloat(formData.prevOdometer);
-                    if (distance <= 0) return notify("Odo. atual deve ser maior.", "error");
-                    kml = (distance / parseFloat(formData.liters)).toFixed(2);
-                    costPerKm = (parseFloat(formData.totalCost) / distance).toFixed(2);
+                    const dist = parseFloat(formData.odometer) - parseFloat(formData.prevOdometer);
+                    if (dist <= 0) return notify("O odómetro deve ser maior que o anterior.", "error");
+                    stats = {
+                        distance: dist,
+                        kml: (dist / parseFloat(formData.liters)).toFixed(2),
+                        costPerKm: (parseFloat(formData.totalCost) / dist).toFixed(2)
+                    };
                 }
 
-                setRecords([{ id: Date.now(), userId: selectedUserId, distance, kml, costPerKm, ...formData }, ...records]);
-                notify("Gravado!");
-                setFormData(prev => ({ ...prev, hadFueling: false, liters: '', totalCost: '' }));
+                const newRecord = {
+                    id: Date.now(),
+                    userId: selectedUserId,
+                    ...formData,
+                    ...stats
+                };
+
+                setRecords([newRecord, ...records]);
+                notify("Registo guardado com sucesso!");
+                
+                // Resetar formulário (Checklist volta ao estado inicial)
+                setFormData(prev => ({
+                    ...prev,
+                    hadFueling: false,
+                    liters: '',
+                    totalCost: '',
+                    checklist: checklistItems.reduce((acc, item) => ({ ...acc, [item.id]: true }), {})
+                }));
             };
 
             return (
-                <div className="flex justify-center min-h-screen bg-gray-50">
-                    <div className="w-full max-w-md bg-white min-h-screen shadow-xl relative pb-20 overflow-x-hidden">
+                <div className="flex justify-center min-h-screen bg-gray-50 pb-24">
+                    <div className="w-full max-w-md bg-white min-h-screen shadow-xl relative overflow-x-hidden">
                         
                         {/* Header */}
-                        <header className="sticky top-0 bg-white/90 backdrop-blur border-b p-5 flex items-center gap-3 z-30">
-                            <div className="bg-blue-600 p-2 rounded-xl"><Icon name="Car" className="text-white w-5 h-5" /></div>
-                            <h1 className="text-xl font-black">Frota<span className="text-blue-600">App</span></h1>
+                        <header className="sticky top-0 bg-white/90 backdrop-blur-md border-b p-5 flex items-center gap-3 z-40">
+                            <div className="bg-blue-600 p-2 rounded-2xl shadow-lg shadow-blue-100">
+                                <Icon name="Car" className="text-white w-5 h-5" />
+                            </div>
+                            <div>
+                                <h1 className="text-lg font-black leading-none">Frota<span className="text-blue-600">App</span></h1>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Gestão Diária</p>
+                            </div>
                         </header>
 
-                        {/* Notification */}
+                        {/* Notification Toast */}
                         {notification && (
-                            <div className={`fixed top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-2xl shadow-xl z-50 text-sm font-bold animate-slide ${notification.type === 'error' ? 'bg-red-500 text-white' : 'bg-gray-900 text-white'}`}>
+                            <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3 rounded-2xl shadow-2xl z-50 text-sm font-bold animate-slide border ${
+                                notification.type === 'error' ? 'bg-red-500 text-white' : 'bg-gray-900 text-white'
+                            }`}>
                                 {notification.msg}
                             </div>
                         )}
 
                         <main className="p-6 space-y-6">
-                            {activeTab === 'registro' && (
+                            {activeTab === 'registo' && (
                                 <div className="space-y-6 animate-slide">
-                                    <section className="bg-gray-50 p-5 rounded-3xl border border-gray-100">
-                                        <h2 className="text-sm font-bold text-gray-400 uppercase mb-4">Informação Geral</h2>
-                                        <div className="space-y-4">
-                                            <select value={selectedUserId} onChange={e => setSelectedUserId(Number(e.target.value))} className="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 ring-blue-500 font-bold">
-                                                {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.plate})</option>)}
-                                            </select>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl outline-none" />
-                                                <input type="number" placeholder="KM Atual" value={formData.odometer} onChange={e => setFormData({...formData, odometer: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl outline-none font-bold" />
-                                            </div>
+                                    {/* Identificação */}
+                                    <section className="bg-gray-50 p-5 rounded-[2.5rem] border border-gray-100 space-y-4">
+                                        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Identificação</h2>
+                                        <select 
+                                            value={selectedUserId} 
+                                            onChange={e => setSelectedUserId(Number(e.target.value))} 
+                                            className="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 ring-blue-500 font-bold transition-all"
+                                        >
+                                            {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.plate})</option>)}
+                                        </select>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl outline-none text-sm font-medium" />
+                                            <input type="number" placeholder="KM Atual" value={formData.odometer} onChange={e => setFormData({...formData, odometer: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl outline-none font-black text-blue-600" />
                                         </div>
                                     </section>
 
-                                    <section className="bg-gray-50 p-5 rounded-3xl border border-gray-100">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h2 className="text-sm font-bold text-gray-400 uppercase">Abastecimento</h2>
-                                            <button onClick={() => setFormData({...formData, hadFueling: !formData.hadFueling})} className={`w-12 h-6 rounded-full transition-all relative ${formData.hadFueling ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.hadFueling ? 'left-7' : 'left-1'}`} />
-                                            </button>
-                                        </div>
-                                        {formData.hadFueling && (
-                                            <div className="space-y-3 animate-slide">
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <input type="number" placeholder="Odo. Anterior" value={formData.prevOdometer} readOnly className="p-4 bg-gray-100 border border-transparent rounded-2xl text-gray-500" />
-                                                    <input type="number" placeholder="Litros (L)" value={formData.liters} onChange={e => setFormData({...formData, liters: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl" />
-                                                </div>
-                                                <input type="number" placeholder="Valor Total (€)" value={formData.totalCost} onChange={e => setFormData({...formData, totalCost: e.target.value})} className="w-full p-4 bg-white border border-gray-200 rounded-2xl" />
-                                            </div>
-                                        )}
-                                    </section>
-
-                                    <section className="bg-gray-50 p-5 rounded-3xl border border-gray-100">
-                                        <h2 className="text-sm font-bold text-gray-400 uppercase mb-4">Checklist Diário</h2>
+                                    {/* Checklist - ONDE ESTAVA O ERRO */}
+                                    <section className="bg-gray-50 p-5 rounded-[2.5rem] border border-gray-100">
+                                        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-4">Checklist de Segurança</h2>
                                         <div className="grid grid-cols-1 gap-2">
                                             {checklistItems.map(item => (
-                                                <div key={item.id} onClick={() => handleChecklistChange(item.id)} className="flex items-center justify-between p-4 bg-white rounded-2xl cursor-pointer active:scale-95 transition-all">
+                                                <div 
+                                                    key={item.id} 
+                                                    onClick={() => handleChecklistToggle(item.id)} 
+                                                    className="flex items-center justify-between p-4 bg-white rounded-2xl cursor-pointer active-press transition-all border border-transparent hover:border-blue-100"
+                                                >
                                                     <span className="text-sm font-bold text-gray-700">{item.label}</span>
-                                                    {formData.checklist[item.id] ? <Icon name="Check" className="text-green-500 w-5 h-5" /> : <Icon name="XCircle" className="text-red-400 w-5 h-5" />}
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                                                        formData.checklist[item.id] ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-400'
+                                                    }`}>
+                                                        <Icon name={formData.checklist[item.id] ? "Check" : "X"} className="w-4 h-4" />
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
                                     </section>
 
-                                    <button onClick={save} className="w-full py-5 bg-blue-600 text-white rounded-3xl font-black shadow-xl shadow-blue-100 flex items-center justify-center gap-2 active:scale-95 transition-all">
-                                        <Icon name="Save" className="w-5 h-5" /> Gravar Registro
+                                    {/* Abastecimento */}
+                                    <section className="bg-gray-50 p-5 rounded-[2.5rem] border border-gray-100">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Abastecimento</h2>
+                                            <button 
+                                                onClick={() => setFormData({...formData, hadFueling: !formData.hadFueling})} 
+                                                className={`w-12 h-6 rounded-full transition-all relative ${formData.hadFueling ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                            >
+                                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.hadFueling ? 'left-7' : 'left-1'}`} />
+                                            </button>
+                                        </div>
+                                        {formData.hadFueling && (
+                                            <div className="space-y-3 animate-slide pt-2">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="p-4 bg-gray-100 rounded-2xl">
+                                                        <p className="text-[8px] font-bold text-gray-400 uppercase">Anterior</p>
+                                                        <p className="font-bold text-gray-500">{formData.prevOdometer || '0'} km</p>
+                                                    </div>
+                                                    <input type="number" placeholder="Litros" value={formData.liters} onChange={e => setFormData({...formData, liters: e.target.value})} className="p-4 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 ring-blue-500" />
+                                                </div>
+                                                <input type="number" placeholder="Custo Total (€)" value={formData.totalCost} onChange={e => setFormData({...formData, totalCost: e.target.value})} className="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 ring-blue-500 font-bold" />
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    <button onClick={handleSave} className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-black shadow-2xl shadow-blue-200 flex items-center justify-center gap-2 active-press transition-all">
+                                        <Icon name="Save" className="w-5 h-5" /> Gravar Dados Diários
                                     </button>
                                 </div>
                             )}
 
                             {activeTab === 'historico' && (
                                 <div className="space-y-4 animate-slide">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-lg font-black">Histórico</h2>
-                                        <button onClick={exportCSV} className="text-xs bg-blue-50 text-blue-600 px-4 py-2 rounded-xl font-bold flex items-center gap-1">
-                                            <Icon name="Download" className="w-3 h-3" /> Exportar CSV
-                                        </button>
+                                    <div className="flex justify-between items-center px-2">
+                                        <h2 className="text-xl font-black">Histórico</h2>
+                                        <button onClick={() => { if(confirm('Apagar tudo?')) setRecords([]) }} className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Limpar</button>
                                     </div>
                                     {records.length === 0 ? (
-                                        <div className="p-10 text-center text-gray-300 font-bold uppercase tracking-widest">Sem Registros</div>
+                                        <div className="py-20 text-center opacity-20"><Icon name="History" className="w-20 h-20 mx-auto" /><p className="font-black mt-4">Vazio</p></div>
                                     ) : (
                                         records.map(r => {
                                             const u = users.find(u => u.id === r.userId);
+                                            const fails = checklistItems.filter(i => !r.checklist[i.id]);
                                             return (
-                                                <div key={r.id} className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-3">
-                                                    <div className="flex justify-between">
-                                                        <div><p className="font-black text-gray-800">{u?.name}</p><p className="text-[10px] text-gray-400 font-mono">{u?.plate}</p></div>
-                                                        <div className="text-right"><p className="text-[10px] text-gray-400">{r.date}</p><p className="font-bold text-blue-600 text-sm">{r.odometer} km</p></div>
+                                                <div key={r.id} className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-4">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <p className="font-black text-gray-800">{u?.name}</p>
+                                                            <p className="text-[10px] font-bold text-gray-400 uppercase">{u?.plate} • {r.date}</p>
+                                                        </div>
+                                                        <div className="text-right bg-blue-50 px-3 py-1 rounded-full">
+                                                            <p className="text-xs font-black text-blue-600">{r.odometer} km</p>
+                                                        </div>
                                                     </div>
+                                                    
                                                     {r.hadFueling && (
-                                                        <div className="grid grid-cols-2 gap-2 bg-blue-50 p-3 rounded-2xl">
-                                                            <div><p className="text-[8px] text-blue-400 uppercase font-bold">Km/L</p><p className="text-sm font-black text-blue-700">{r.kml}</p></div>
-                                                            <div><p className="text-[8px] text-blue-400 uppercase font-bold">Custo/km</p><p className="text-sm font-black text-blue-700">{r.costPerKm}€</p></div>
+                                                        <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-2xl">
+                                                            <div><p className="text-[8px] text-gray-400 uppercase font-black tracking-tighter">Consumo</p><p className="text-xs font-black">{r.kml} km/L</p></div>
+                                                            <div><p className="text-[8px] text-gray-400 uppercase font-black tracking-tighter">Custo/km</p><p className="text-xs font-black">{r.costPerKm}€</p></div>
                                                         </div>
                                                     )}
+
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {fails.length === 0 ? (
+                                                            <span className="text-[9px] font-black uppercase bg-green-50 text-green-600 px-2 py-1 rounded-md">Viatura OK</span>
+                                                        ) : (
+                                                            fails.map(f => <span key={f.id} className="text-[9px] font-black uppercase bg-red-50 text-red-500 px-2 py-1 rounded-md">{f.label} ✖</span>)
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )
                                         })
@@ -244,34 +294,38 @@
                                 </div>
                             )}
 
-                            {activeTab === 'usuarios' && (
-                                <div className="space-y-4 animate-slide">
-                                    <h2 className="text-lg font-black">Configuração</h2>
+                            {activeTab === 'equipa' && (
+                                <div className="space-y-6 animate-slide">
+                                    <h2 className="text-xl font-black px-2">Gestão de Equipa</h2>
                                     {users.map((u, idx) => (
-                                        <div key={u.id} className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm space-y-3">
-                                            <p className="text-[10px] font-bold text-blue-600 uppercase">Condutor {idx + 1}</p>
-                                            <input type="text" value={u.name} onChange={e => setUsers(prev => prev.map(usr => usr.id === u.id ? {...usr, name: e.target.value} : usr))} className="w-full p-3 bg-gray-50 rounded-xl outline-none font-bold" />
-                                            <input type="text" value={u.plate} onChange={e => setUsers(prev => prev.map(usr => usr.id === u.id ? {...usr, plate: e.target.value.toUpperCase()} : usr))} className="w-full p-3 bg-gray-50 rounded-xl outline-none font-mono text-xs" />
+                                        <div key={u.id} className="p-5 bg-white border border-gray-100 rounded-[2rem] shadow-sm space-y-4">
+                                            <p className="text-[10px] font-black text-blue-600 uppercase ml-2">Condutor {idx + 1}</p>
+                                            <div className="space-y-2">
+                                                <input type="text" value={u.name} onChange={e => setUsers(prev => prev.map(usr => usr.id === u.id ? {...usr, name: e.target.value} : usr))} className="w-full p-4 bg-gray-50 border-none rounded-2xl outline-none font-bold text-sm" placeholder="Nome" />
+                                                <input type="text" value={u.plate} onChange={e => setUsers(prev => prev.map(usr => usr.id === u.id ? {...usr, plate: e.target.value.toUpperCase()} : usr))} className="w-full p-4 bg-gray-50 border-none rounded-2xl outline-none font-mono text-xs tracking-widest" placeholder="Placa" />
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
                             )}
                         </main>
 
-                        {/* Navigation */}
-                        <nav className="fixed bottom-0 w-full max-w-md bg-white/80 backdrop-blur border-t h-20 flex justify-around items-center px-4 pb-safe z-50">
-                            <button onClick={() => setActiveTab('registro')} className={`flex flex-col items-center gap-1 ${activeTab === 'registro' ? 'text-blue-600' : 'text-gray-300'}`}>
-                                <Icon name="Clipboard" className="w-6 h-6" />
-                                <span className="text-[10px] font-bold">Registro</span>
-                            </button>
-                            <button onClick={() => setActiveTab('historico')} className={`flex flex-col items-center gap-1 ${activeTab === 'historico' ? 'text-blue-600' : 'text-gray-300'}`}>
-                                <Icon name="History" className="w-6 h-6" />
-                                <span className="text-[10px] font-bold">Histórico</span>
-                            </button>
-                            <button onClick={() => setActiveTab('usuarios')} className={`flex flex-col items-center gap-1 ${activeTab === 'usuarios' ? 'text-blue-600' : 'text-gray-300'}`}>
-                                <Icon name="Users" className="w-6 h-6" />
-                                <span className="text-[10px] font-bold">Equipa</span>
-                            </button>
+                        {/* Navigation Bar */}
+                        <nav className="fixed bottom-0 w-full max-w-md bg-white/90 backdrop-blur-lg border-t h-20 flex justify-around items-center px-6 pb-safe z-40">
+                            {[
+                                { id: 'registo', icon: 'Clipboard', label: 'Registo' },
+                                { id: 'historico', icon: 'History', label: 'Histórico' },
+                                { id: 'equipa', icon: 'Users', label: 'Equipa' }
+                            ].map(tab => (
+                                <button 
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)} 
+                                    className={`flex flex-col items-center gap-1 transition-all ${activeTab === tab.id ? 'text-blue-600 scale-110' : 'text-gray-300'}`}
+                                >
+                                    <Icon name={tab.icon} className="w-6 h-6" />
+                                    <span className="text-[9px] font-black uppercase tracking-tighter">{tab.label}</span>
+                                </button>
+                            ))}
                         </nav>
                     </div>
                 </div>
